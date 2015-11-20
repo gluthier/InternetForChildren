@@ -29,7 +29,7 @@ var httpRequestObserver = {
           Request({
             url: "http://9580fbb4.ngrok.io/test",
             content: {
-              md5: MD5.md5(data)
+              md5: md5.md5(data)
             },
             onComplete: function (response) {
               console.log(response.text);
