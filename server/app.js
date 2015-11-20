@@ -3,6 +3,7 @@ var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
 var crypto = require('crypto');
 var phash = require('phash-image');
+var phash1 = require('phash-imagemagick');
 var request = require('request');
 var randomstring = require("randomstring");
 var md5File = require('md5-file');
@@ -29,7 +30,10 @@ app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
 });
-app.use(bodyParser.json());
+
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
 
 app.post('/url/check', function(req, res) {
   if (!req.body.hasOwnProperty('url')) {
@@ -46,12 +50,16 @@ app.post('/url/check', function(req, res) {
       var ratio = computeRatio(img);
       var done = img.save(function(err, model) {
         if (err) return handleError(err, res);
-        if (done) res.json({ blocked: true });
+        if (done){
+           console.log("Blocked by url");
+           res.json({ blocked: true });
+        }
       });
     } else {
-      var name  = "/tmp/" + randomstring.generate() + "." + url.split('.').pop();
+      var name  = "/tmp/" + randomstring.generate();// + "." + url.split('.').pop();
       var stream = fs.createWriteStream(name);
       stream.on('close', function() {
+
         stream.close();
         md5File(name, function (error, h) {
           if (error) return handleError(error, res);
@@ -61,17 +69,24 @@ app.post('/url/check', function(req, res) {
                 return handleError(err, res);
               }
               if (imgMd5) {
+                console.log("Computing md5");
                 var ratio = computeRatio(imgMd5);
                 imgMd5.nView = imgMd5.nView + 1;
                 imgMd5.urls.push(url);
                 var done = imgMd5.save(function(err, done) {
                   if (err) return handleError(err, res);
-                  if (done) res.json({blocked: true});
+                  if (done) {
+                    console.log("blocked by md5");
+                    fs.unlink(name);
+                    res.json({blocked: true});
+                  }
                 });
               } else {
-                phash(name, function(err, pHash) {
+                phash1.get(name, function(err, pHash) {
                   if(err) return handleError(err, res);
-                  else {
+                  else if(pHash == 0){
+                      res.json({blocked: false});
+                  } else {
                     Image.findOne({phash: pHash}, function(err, imgPh) {
                       if (err) {
                         return handleError(err, res);
@@ -83,9 +98,14 @@ app.post('/url/check', function(req, res) {
                         var ratio = computeRatio(imgPh);
                         imgPh.save(function(err, done) {
                           if (err) return handleError(err, res);
-                          if (done) res.json({blocked: true});
+                          if (done) {
+                            console.log("blocked by hash");
+                            fs.unlink(name);
+                            res.json({blocked: true});
+                          }
                         });
                       } else {
+                        fs.unlink(name);
                         res.json({blocked: false});
                       }
                     });
@@ -96,14 +116,18 @@ app.post('/url/check', function(req, res) {
           }
         })
       });
-      request.get({uri: url})
-      .pipe(stream);
-
+      try {
+        request.get({uri: url})
+          .pipe(stream);
+      } catch(e) {
+          console.log("An error occured, invalid url");
+      }
     }
   });
 });
 
 app.post('/url/block/', function(req, res) {
+  console.log(req.body);
   if (!req.body.hasOwnProperty('url')) {
     res.statusCode = 400;
     return res.sendStatus(400);
@@ -122,7 +146,7 @@ app.post('/url/block/', function(req, res) {
 
       // TODO add image
       // Compute ph and look for it
-      var name  = "/tmp/" + randomstring.generate() + "." + url.split('.').pop();
+      var name  = "/tmp/" + randomstring.generate();// + "." + url.split('.').pop();
       var stream = fs.createWriteStream(name);
       stream.on('close', function() {
         stream.close();
@@ -142,9 +166,12 @@ app.post('/url/block/', function(req, res) {
                   if (done) res.sendStatus(200);
                 });
               } else {
-                phash(name, function(err, pHash) {
+                phash1.get(name, true, function(err, pHash) {
+                  pHash = pHash.pHash;
+                  console.log(pHash.toString('hex'));
                   if(err) return handleError(err, res);
                   else {
+
                     Image.findOne({phash: pHash}, function(err, imgPh) {
                       if (err) {
                         return handleError(err, res);
@@ -156,7 +183,10 @@ app.post('/url/block/', function(req, res) {
                         var ratio = computeRatio(imgPh);
                         imgPh.save(function(err, done) {
                           if (err) return handleError(err, res);
-                          if (done) res.sendStatus(200);
+                          if (done) {
+                            res.sendStatus(200);
+                            fs.unlink(name);
+                          }
                         });
                       } else {
                         var image = new Image({
@@ -169,7 +199,10 @@ app.post('/url/block/', function(req, res) {
                         });
                         image.save(function(err, done) {
                           if(err) return handleError(err, res);
-                          else res.sendStatus(200);
+                          else {
+                            fs.unlink(name);
+                            res.sendStatus(200);
+                          }
                         })
                       }
                     });
@@ -180,8 +213,12 @@ app.post('/url/block/', function(req, res) {
           }
         })
       });
-      request.get({uri: url})
-      .pipe(stream);
+      try {
+        request.get({uri: url})
+        .pipe(stream);
+      } catch(e) {
+        console.log("Request problem", e);
+      }
     }
   });
 });
