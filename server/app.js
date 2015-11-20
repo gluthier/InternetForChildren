@@ -40,7 +40,7 @@ app.post('/url/check', function(req, res) {
     res.statusCode = 400;
     return res.send('Error 400: Post syntax incorrect.');
   }
-  var url = req.body.url
+  var url = req.body.url.replace(':thumb','');
   Image.findOne({urls: url}, function(err, img) {
     if (err) {
       return handleError(err, res);
@@ -113,7 +113,7 @@ app.post('/url/check', function(req, res) {
 			    console.log("Not blocked");
 			  }
 			});
-			if(!found) 
+			if(!found)
 			    res.json({blocked: false});
 		    });
 		    fs.unlink(name);
