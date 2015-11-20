@@ -1,4 +1,4 @@
-var serverURL = "1a3262c6.ngrok.io";
+var serverURL = "https://8473b6b3.ngrok.io";
 
 function addCustomSearchResult(jNode) {
   if(needFiltering(jNode)) {
@@ -10,15 +10,21 @@ function addCustomSearchResult(jNode) {
       .css("position", "absolute")
       .css("top", "0")
       .css("left", "0")
-      .css("height", "30")
-      .css("width", "30")
-      .css("pointer", "cursor")
+      .css("height", "20")
+      .css("width", "20")
+      .css("cursor", "pointer")
       .css("background-image", "url(https://pbs.twimg.com/media/CUPMT7-U8AACwrZ.png)")
       .css("background-size", "100% 100%")
       .css("z-index", "99")
       .on('click', function () {
-        $(blockedDiv).show();
-        jNode.hide();
+        $(jNode).parent().click(function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        $(reportDiv).hide();
+        $(jNode).hide();
+        $(blockedDiv).insertAfter(jNode);
 
         blockImage(jNode.attr("src"));
       });
@@ -34,40 +40,45 @@ function addCustomSearchResult(jNode) {
       .html(
         '<br/><h1 class="derpTitle"> This photo has been banned. </h1> <a class = "derp green"> Allow </a><a class="derp yellow">Preview</a>'
       ).on('click', '.yellow', function () {
-        password = prompt('Please enter your password to preview the image', ' ');
+        password = prompt('Please enter your password to preview the image', '');
 
         if(password == "pass") {
           $(blockedDiv).hide();
-          jNode.show();
-          jNode.css("filter", "blur(2px)");
+          $(jNode).show();
+          $(jNode).css("filter", "blur(2px)");
           setTimeout(function () {
             $(blockedDiv).show();
-            jNode.hide();
-            jNode.css("filter", "blur(0px)");
+            $(jNode).hide();
+            $(jNode).css("filter", "blur(0px)");
           }, 3000);
         }
       }).on('click', '.green', function () {
-        password = prompt('Please enter your password to preview the image', ' ');
+        password = prompt('Please enter your password to preview the image', '');
 
         if(password == "pass") {
           $(blockedDiv).hide();
-          jNode.show();
+          $(jNode).show();
+          $(reportDiv).insertAfter(jNode);
 
           //REQUEST
           unblockImage(jNode.attr("src"));
         }
       });
 
-    if(!isBlocked(jNode.attr("src"))) {
-      $(reportDiv).insertAfter(jNode);
-    } else {
-      jNode.parent().click(function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      })
-      $(blockedDiv).insertAfter(jNode);
-      jNode.hide();
-    }
+    $(jNode).hide();
+    isBlocked($(jNode).attr("src"), function (data) {
+      $(jNode).show();
+      if(!data) {
+        $(reportDiv).insertAfter(jNode);
+      } else {
+        $(jNode).parent().click(function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+        $(blockedDiv).insertAfter(jNode);
+        $(jNode).hide();
+      }
+    });
   }
 }
 
@@ -77,16 +88,16 @@ function needFiltering(node, callback) {
   return css_width > 60 && css_height > 60;
 }
 
-function isBlocked(url) {
-  //console.log(url);
-  //console.log(JSON.parse("{ 'url': '" + url + "'}"));
-
-  $.post(serverURL + "/url/check", {
-      'url': url
+function isBlocked(url, fun) {
+  $.ajax({
+      type: 'POST',
+      url: serverURL + "/url/check",
+      data: {
+        'url': url
+      }
     })
     .done(function (data) {
-      var jData = JSON.parse(data);
-      return jData.blocked;
+      fun(data.blocked);
     });
 }
 
