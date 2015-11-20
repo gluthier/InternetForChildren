@@ -1,0 +1,16 @@
+{
+  "title": "Internet For Children",
+  "name": "internetforchildren",
+  "version": "0.0.1",
+  "description": "Safer internet for children",
+  "main": "index.js",
+  "author": "Bits Please",
+  "engines": {
+    "firefox": ">=38.0a1",
+    "fennec": ">=38.0a1"
+  },
+  "license": "MIT",
+  "keywords": [
+    "jetpack"
+  ]
+}
