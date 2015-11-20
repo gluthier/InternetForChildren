@@ -1,9 +1,9 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
+var compare = require('hamming-distance');
 var crypto = require('crypto');
 var phash = require('phash-image');
-var phash1 = require('phash-imagemagick');
 var request = require('request');
 var randomstring = require("randomstring");
 var md5File = require('md5-file');
@@ -12,7 +12,7 @@ var fs = require('fs');
 var Schema = mongoose.Schema;
 
 var imageSchema = new Schema({
-  phash         : {type: String, required: true, unique: true},
+  phash         : {type: Buffer, required: true, unique: true},
   md5s          : [String],
   urls          : [String],
   nView         : {type: Number, default: 1},
@@ -46,17 +46,17 @@ app.post('/url/check', function(req, res) {
       return handleError(err, res);
     }
     if (img) {
+      console.log("Blocked by url");
       img.nView = img.nView + 1;
       var ratio = computeRatio(img);
       var done = img.save(function(err, model) {
         if (err) return handleError(err, res);
         if (done){
-           console.log("Blocked by url");
            res.json({ blocked: true });
         }
       });
     } else {
-      var name  = "/tmp/" + randomstring.generate();// + "." + url.split('.').pop();
+      var name  = "/tmp/" + randomstring.generate();
       var stream = fs.createWriteStream(name);
       stream.on('close', function() {
 
@@ -82,33 +82,41 @@ app.post('/url/check', function(req, res) {
                   }
                 });
               } else {
-                phash1.get(name, function(err, pHash) {
+                phash(name, function(err, pHash) {
+		  console.log(pHash, url);
                   if(err) return handleError(err, res);
                   else if(pHash == 0){
+		      console.log("Not blocked");
                       res.json({blocked: false});
                   } else {
-                    Image.findOne({phash: pHash}, function(err, imgPh) {
-                      if (err) {
-                        return handleError(err, res);
-                      }
-                      if (imgPh) {
-                        imgPh.urls.push(url);
-                        imgPh.md5s.push(h);
-                        imgPh.nView = imgPh.nView + 1;
-                        var ratio = computeRatio(imgPh);
-                        imgPh.save(function(err, done) {
-                          if (err) return handleError(err, res);
-                          if (done) {
-                            console.log("blocked by hash");
-                            fs.unlink(name);
-                            res.json({blocked: true});
-                          }
-                        });
-                      } else {
-                        fs.unlink(name);
-                        res.json({blocked: false});
-                      }
-                    });
+		    console.log("phash");
+		    var found = false;
+                    Image.find({}, function(err, imgs) {
+			imgs.forEach(function(img) {
+			  console.log("phash3", img.phash, pHash);
+			  var d = compare(img.phash, pHash);
+			  console.log("Hamming compute", d);
+			  if ( d < 15) {
+			    img.urls.push(url);
+			    img.md5s.push(h);
+			    img.nView = img.nView + 1;
+			    found = true;
+			    var ratio = computeRatio(img);
+			    img.save(function(err, done) {
+			      if (err) return handleError(err, res);
+			      if (done) {
+				console.log("blocked by hash");
+				return res.json({blocked: true});
+			      }
+			    });
+			  } else {
+			    console.log("Not blocked");
+			  }
+			});
+			if(!found) 
+			    res.json({blocked: false});
+		    });
+		    fs.unlink(name);
                   }
                 });
               }
@@ -143,10 +151,7 @@ app.post('/url/block/', function(req, res) {
         if (done) res.sendStatus(200);
       });
     } else {
-
-      // TODO add image
-      // Compute ph and look for it
-      var name  = "/tmp/" + randomstring.generate();// + "." + url.split('.').pop();
+      var name  = "/tmp/" + randomstring.generate();
       var stream = fs.createWriteStream(name);
       stream.on('close', function() {
         stream.close();
@@ -166,9 +171,8 @@ app.post('/url/block/', function(req, res) {
                   if (done) res.sendStatus(200);
                 });
               } else {
-                phash1.get(name, true, function(err, pHash) {
-                  pHash = pHash.pHash;
-                  console.log(pHash.toString('hex'));
+                phash(name, function(err, pHash) {
+                  console.log(pHash);
                   if(err) return handleError(err, res);
                   else {
 
