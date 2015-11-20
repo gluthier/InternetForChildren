@@ -38,7 +38,7 @@ function addCustomSearchResult(jNode) {
       .css("width", jNode.width())
       .css("background-color", "black")
       .html(
-        '<br/><h1 class="derpTitle"> This photo has been banned. </h1> <a class = "derp green"> Allow </a><a class="derp yellow">Preview</a>'
+        ($(jNode).height() < "100" || $(jNode).width() < "100")? '<a class = "green" style="cursor: pointer;border: none;"> Allow </a><br /><a class="yellow" style="cursor: pointer; border: none;">Preview</a>' : '<br/><h1 class="derpTitle"> This photo has been reported </h1> <a class = "derp green"> Allow </a><a class="derp yellow">Preview</a>'
       ).on('click', '.yellow', function () {
         password = prompt('Please enter your password to preview the image', '');
 
