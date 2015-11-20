@@ -2,7 +2,7 @@
 var self = require("sdk/self");
 var md5 = require("./md5.js");
 var Request = require("sdk/request").Request;
-
+var EL = require("./EmptyListener.js");
 let {
   Cc, Ci, Cu
 } = require("chrome");
@@ -17,12 +17,15 @@ var httpRequestObserver = {
     if(topic == "http-on-examine-response") {
       subject.QueryInterface(Ci.nsIHttpChannel); // DO NOT REMOVE
       var channel = subject.QueryInterface(Ci.nsITraceableChannel);
-      if(/.*\.(png|jpg|jpeg)$/.test(channel.URI.spec)) {
+//      if(/.*\.(png|jpg|jpeg)$/.test(channel.URI.spec)) {
+
+      if(/.*learnmore.*$/.test(channel.URI.spec)) {
         // Request to backserver
         // Async or sync
         console.log("Intercepting " + channel.requestMethod + " " + channel.URI.spec);
-
-        NetUtil.asyncFetch(channel.URI.spec, function (inputStream, status) {
+          var newListener = new EL.EmptyListener();
+        newListener.originalListener = subject.setNewListener(newListener); 
+        /*NetUtil.asyncFetch(channel.URI.spec, function (inputStream, status) {
           // The file data is contained within inputStream.
           // You can read it into a string with
           var data = NetUtil.readInputStreamToString(inputStream, inputStream.available());
@@ -31,11 +34,11 @@ var httpRequestObserver = {
             content: {
               md5: md5.md5(data)
             },
-            onComplete: function (response) {
-              console.log(response.text);
+          onComplete: function (response) {
+          //  console.log(response.text);
             }
           }).post();
-        });
+        });*/
       }
     }
   },
