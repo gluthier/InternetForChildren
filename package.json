@@ -1,0 +1,19 @@
+{
+  "name": "internet_for_children",
+  "version": "1.0.0",
+  "description": "Firefox extension to prevent children from stumbling upon disturbing images",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Timonzimm/InternetForChildren.git"
+  },
+  "author": "Bits Please",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Timonzimm/InternetForChildren/issues"
+  },
+  "homepage": "https://github.com/Timonzimm/InternetForChildren#readme"
+}
