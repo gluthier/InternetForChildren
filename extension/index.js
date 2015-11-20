@@ -6,5 +6,7 @@ pageMod.PageMod({
     contentScriptFile: [data.url("jquery.js"),
                         data.url("wfk.js"),
                         data.url("md5.js"),
+//                        data.url("zlib.js"),
+//                        data.url("hash.js"),
                         data.url("contentScript.js")]
 });
